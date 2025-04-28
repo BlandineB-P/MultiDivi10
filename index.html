@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu des puissances de 10</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+      background: #f3f4f6;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: inline-block;
+      min-width: 300px;
+    }
+    .question {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    input {
+      padding: 0.5rem;
+      font-size: 1.2rem;
+      width: 150px;
+    }
+    button {
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+    }
+    .result {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    #timer {
+      font-size: 1.2rem;
+      margin-top: 0.5rem;
+      color: #ef4444;
+    }
+    #score {
+      font-size: 1rem;
+      margin-top: 1rem;
+      color: #10b981;
+    }
+    .correction {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="menu">
+      <h2>Jeu : Multiplier ou diviser par 10, 100, 1000</h2>
+      <p>Choisis ton mode :</p>
+      <button onclick="chooseMode('training')">Mode entraînement</button>
+      <button onclick="chooseMode('challenge')">Mode défi</button>
+      <div id="difficultySelect" class="hidden">
+        <p>Choisis la difficulté :</p>
+        <button onclick="startGame('facile')">Facile</button>
+        <button onclick="startGame('moyen')">Moyen</button>
+        <button onclick="startGame('difficile')">Difficile</button>
+      </div>
+    </div>
+
+    <div id="game" style="display:none;">
+      <div class="question" id="question"></div>
+      <input type="text" id="answer" placeholder="Ta réponse">
+      <div>
+        <button onclick="checkAnswer()">Vérifier</button>
+      </div>
+      <div id="timer">Temps restant : 30 s</div>
+      <div class="result" id="result"></div>
+      <div class="correction" id="correction"></div>
+      <div id="score"></div>
+    </div>
+
+    <div id="summary" style="display:none;">
+      <h3>Fin de la session !</h3>
+      <p id="finalScore"></p>
+      <h4>Récapitulatif des erreurs :</h4>
+      <ul id="errorList"></ul>
+      <button onclick="location.reload()">Rejouer</button>
+    </div>
+  </div>
+
+  <script>
+    let currentAnswer = 0;
+    let currentCorrection = '';
+    let questionCount = 0;
+    let score = 0;
+    let timer;
+    let timeLeft;
+    let mode = '';
+    let difficulty = 'moyen';
+    const maxQuestions = 20;
+    const errors = [];
+
+    function chooseMode(selectedMode) {
+      mode = selectedMode;
+      document.getElementById('difficultySelect').classList.remove('hidden');
+    }
+
+    function startGame(selectedDifficulty) {
+      difficulty = selectedDifficulty;
+      score = 0;
+      questionCount = 0;
+      errors.length = 0;
+      document.getElementById("menu").style.display = "none";
+      document.getElementById("summary").style.display = "none";
+      document.getElementById("game").style.display = "block";
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      if (mode === 'challenge' && questionCount >= maxQuestions) {
+        endGame();
+        return;
+      }
+      questionCount++;
+
+      let decimalPlaces;
+      if (difficulty === 'facile') decimalPlaces = 1;
+      else if (difficulty === 'moyen') decimalPlaces = 2 + Math.floor(Math.random() * 2);
+      else decimalPlaces = 3 + Math.floor(Math.random() * 3);
+
+      const num = parseFloat((Math.random() * 100).toFixed(decimalPlaces));
+      const op = Math.random() > 0.5 ? 'x' : '/';
+      const factor = [10, 100, 1000][Math.floor(Math.random() * 3)];
+      currentAnswer = op === 'x' ? num * factor : num / factor;
+
+      currentCorrection = `${num.toString().replace('.', ',')} ${op} ${factor} = ${(currentAnswer).toFixed(5).replace('.', ',')}`;
+
+      document.getElementById('question').textContent = `${num.toString().replace('.', ',')} ${op} ${factor}`;
+      document.getElementById('answer').value = '';
+      document.getElementById('result').textContent = '';
+      document.getElementById('correction').textContent = '';
+      document.getElementById('score').textContent = `Score : ${score} / ${questionCount - 1}`;
+      
+      if (mode === 'challenge') startTimer();
+      else document.getElementById('timer').style.display = 'none';
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timeLeft = 30;
+      document.getElementById('timer').style.display = 'block';
+      document.getElementById('timer').textContent = `Temps restant : ${timeLeft} s`;
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = `Temps restant : ${timeLeft} s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          handleIncorrect("Temps écoulé");
+        }
+      }, 1000);
+    }
+
+    function checkAnswer() {
+      clearInterval(timer);
+      const userAnswer = parseFloat(document.getElementById('answer').value.replace(',', '.'));
+      const resultText = document.getElementById('result');
+      const correctionText = document.getElementById('correction');
+      if (isNaN(userAnswer)) {
+        resultText.textContent = "Entre un nombre valide.";
+        resultText.style.color = 'orange';
+      } else if (Math.abs(userAnswer - currentAnswer) < 0.00001) {
+        resultText.textContent = "Bravo ! C'est correct ✅";
+        resultText.style.color = 'green';
+        score++;
+        document.getElementById('score').textContent = `Score : ${score} / ${questionCount}`;
+        setTimeout(nextQuestion, 1000);
+      } else {
+        handleIncorrect(userAnswer);
+      }
+    }
+
+    function handleIncorrect(userAnswer) {
+      const resultText = document.getElementById('result');
+      const correctionText = document.getElementById('correction');
+      resultText.textContent = `Raté ❌`;
+      resultText.style.color = 'red';
+      correctionText.textContent = `Correction : ${currentCorrection}`;
+      errors.push({
+        question: document.getElementById('question').textContent,
+        user: userAnswer,
+        correct: currentAnswer.toFixed(5)
+      });
+      setTimeout(nextQuestion, 3000);
+    }
+
+    function endGame() {
+      document.getElementById('game').style.display = 'none';
+      document.getElementById('summary').style.display = 'block';
+      document.getElementById('finalScore').textContent = `Tu as obtenu ${score} bonnes réponses sur ${maxQuestions}.`;
+      const errorList = document.getElementById('errorList');
+      errorList.innerHTML = '';
+      errors.forEach(e => {
+        const li = document.createElement('li');
+        li.textContent = `${e.question} → Ta réponse : ${e.user ?? 'Aucune'} | Correct : ${e.correct}`;
+        errorList.appendChild(li);
+      });
+    }
+
+    window.onload = () => {
+      document.getElementById('menu').style.display = 'block';
+    };
+  </script>
+</body>
+</html>
